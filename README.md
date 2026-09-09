@@ -76,19 +76,7 @@ Follow Equicord's official [Building from Source guide](https://docs.equicord.or
 
 ### 2. Install CustomProfileEnhanced
 
-From the Equicord repository root, clone this repository into `src/userplugins/customProfileEnhanced`:
-
-```shell
-git clone https://github.com/xVanDat/customProfileEnhanced.git src/userplugins/customProfileEnhanced
-```
-
-If you downloaded a ZIP instead, extract it so that this file exists:
-
-```text
-Equicord/src/userplugins/customProfileEnhanced/index.tsx
-```
-
-Do not create an extra nested folder such as `customProfileEnhanced/customProfileEnhanced/index.tsx`.
+Follow Equicord's official [Installing User Plugins guide](https://docs.equicord.org/plugins) to add this plugin to the correct folder. Use this repository as the plugin source: `https://github.com/xVanDat/customProfileEnhanced`.
 
 ### 3. Rebuild Equicord with the userplugin
 
