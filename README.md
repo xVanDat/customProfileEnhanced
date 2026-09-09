@@ -60,10 +60,8 @@ The first `pnpm build` is mandatory. It confirms that your Equicord source check
 From the Equicord repository root, clone this repository into `src/userplugins/customProfileEnhanced`:
 
 ```shell
-git clone <CUSTOM_PROFILE_ENHANCED_REPOSITORY_URL> src/userplugins/customProfileEnhanced
+git clone https://github.com/xVanDat/customProfileEnhanced.git src/userplugins/customProfileEnhanced
 ```
-
-Replace `<CUSTOM_PROFILE_ENHANCED_REPOSITORY_URL>` with the HTTPS clone URL of this repository.
 
 If you downloaded a ZIP instead, extract it so that this file exists:
 
