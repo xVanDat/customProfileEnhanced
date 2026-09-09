@@ -30,6 +30,41 @@ No security review can guarantee that third-party software will remain risk-free
 
 All spoofed profile changes are local-only. Other Discord users will not see them.
 
+## Enhancements over the original plugin
+
+CustomProfileEnhanced adds the following features that were not available in the original Nightcord `CustomProfile` plugin:
+
+- **Per-user Custom Status:** Set a local custom status for an individual user from their context menu. The override is shown only while that user is Online or Idle and never leaves your device.
+- **Nameplate spoofing:** Apply a Discord Shop Nameplate locally by pasting its Shop link or SKU ID.
+- **Profile Frame spoofing:** Apply Discord's newer Profile Frame collectibles locally. This integration is experimental because Discord is still changing the feature.
+
+## How to get and use a Discord Shop SKU ID
+
+You do not need to extract the SKU ID manually. CustomProfileEnhanced accepts the complete Discord Shop share link and automatically reads the number after `itemSkuId=`.
+
+1. Open Discord and select **Shop** from the left sidebar.
+
+   ![Open the Discord Shop from the left sidebar](docs/images/discord-shop.png)
+
+2. Find and open the Avatar Decoration, Profile Effect, Nameplate or Profile Frame you want to spoof. Click the **Share** button near the top-right corner of the item preview.
+
+   ![Click the Share button on the selected Shop item](docs/images/discord-shop-share.png)
+
+3. In the share panel, click the **Copy Link** button with the chain-link icon at the bottom.
+
+   ![Click the chain-link button to copy the Shop item link](docs/images/discord-copy-shop-link.png)
+
+4. Open **Equicord Settings → Plugins → CustomProfileEnhanced**, open the Custom Profile editor and select **Badges & Collectibles**. Paste the complete copied link into the matching **Custom SKU ID** field:
+
+   - Paste an Avatar Decoration link into **Avatar Decoration**.
+   - Paste a Profile Effect link into **Profile Effect**.
+   - Paste a Nameplate link into **Nameplate**.
+   - Paste a Profile Frame link into **Profile Frame (Experimental)**.
+
+5. Click **Save**. The plugin fetches the matching collectible metadata and stores the local override.
+
+For example, in `https://ptb.discord.com/shop#itemSkuId=1491907428344795276`, the SKU ID is `1491907428344795276`. Each Shop item must be pasted into its matching field; a Profile Effect SKU will not work in the Avatar Decoration field.
+
 ## Installation
 
 > [!IMPORTANT]
