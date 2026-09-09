@@ -70,25 +70,9 @@ For example, in `https://ptb.discord.com/shop#itemSkuId=1491907428344795276`, th
 > [!IMPORTANT]
 > **YOU MUST BUILD EQUICORD FROM SOURCE BEFORE YOU CAN USE THIS OR ANY SIMILAR USERPLUGIN. PREBUILT EQUICORD DOWNLOADS DO NOT LOAD SOURCE USERPLUGINS.**
 
-### Requirements
+### 1. Build Equicord from source
 
-- Git
-- Node.js LTS
-- `pnpm`
-- A desktop Discord installation if you plan to inject Equicord into Discord Desktop
-
-Do not perform the Equicord build or injection steps from an Administrator/root terminal.
-
-### 1. Clone and build Equicord from source first
-
-```shell
-git clone https://github.com/Equicord/Equicord.git
-cd Equicord
-pnpm install --frozen-lockfile
-pnpm build
-```
-
-The first `pnpm build` is mandatory. It confirms that your Equicord source checkout and build environment work before adding an unbundled userplugin.
+Follow Equicord's official [Building from Source guide](https://docs.equicord.org/building-from-source). Complete the guide and make sure the source build works before installing this userplugin.
 
 ### 2. Install CustomProfileEnhanced
 
