@@ -22,7 +22,7 @@ No security review can guarantee that third-party software will remain risk-free
 
 This plugin is intended for experienced Equicord/Vencord users who are comfortable reviewing source code, managing userplugins and building Equicord from source.
 
-CustomProfileEnhanced is intentionally distributed only as a userplugin. It is not eligible for merge into Equicord's official plugin collection because Equicord's plugin policy prohibits client-state spoofing.
+CustomProfileEnhanced is intentionally distributed only as a userplugin. Under Equicord's current plugin policy, it is not eligible for merge into the official plugin collection because client-state spoofing is not accepted.
 
 No prebuilt binaries or one-click installation method are provided intentionally. If you are unfamiliar with Equicord's build process or do not understand what this plugin changes, you should not use it.
 
