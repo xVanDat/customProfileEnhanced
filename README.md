@@ -18,6 +18,16 @@ No security review can guarantee that third-party software will remain risk-free
 
 **YOU USE THIS PLUGIN ENTIRELY AT YOUR OWN RISK. YOU ARE RESPONSIBLE FOR YOUR ACCOUNT, CLIENT, DATA AND COMPLIANCE WITH DISCORD'S TERMS OF SERVICE.**
 
+## Intended audience
+
+This plugin is intended for experienced Equicord/Vencord users who are comfortable reviewing source code, managing userplugins and building Equicord from source.
+
+CustomProfileEnhanced is intentionally distributed only as a userplugin. It is not eligible for merge into Equicord's official plugin collection because Equicord's plugin policy prohibits client-state spoofing.
+
+No prebuilt binaries or one-click installation method are provided intentionally. If you are unfamiliar with Equicord's build process or do not understand what this plugin changes, you should not use it.
+
+Review the source before building and use it at your own discretion.
+
 ## Features
 
 - Local profile overrides for username, display name, bio, pronouns, account creation date, email and phone previews.
