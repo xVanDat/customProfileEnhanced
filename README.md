@@ -32,6 +32,9 @@ Review the source before building and use it at your own discretion.
 
 - Local profile overrides for username, display name, bio, pronouns, account creation date, email and phone previews.
 - Local avatar, banner, profile color and Nitro appearance previews.
+- Live editor header preview for the selected account, including unsaved avatar, name, decoration and badge changes.
+- Consistent Nitro tenure and profile customization appearance across the client's premium checks.
+- Local Staff client checks follow the selected Discord Staff badge, including native UI restrictions that use those checks.
 - Custom Discord badge previews and Global Badges integration.
 - Discord Shop link or SKU ID support for Avatar Decorations, Profile Effects, Nameplates and experimental Profile Frames.
 - Local profile connections.
@@ -39,6 +42,12 @@ Review the source before building and use it at your own discretion.
 - Local fake account entries and profile previews in Discord's account switcher.
 
 All spoofed profile changes are local-only. Other Discord users will not see them.
+
+Nitro appearance does not create a subscription, grant server entitlements or enable server-authorized Staff actions. Turning off the Nitro override preserves any real subscription. Staff appearance applies only to configured accounts and does not turn Nitro users into Staff automatically.
+
+Run only one CustomProfile variant at a time. Disable the original `CustomProfile`, enable `CustomProfileEnhanced`, and fully restart Discord after rebuilding so the User model patches are loaded cleanly.
+
+The appearance regression tests use Equicord's existing esbuild dependency. From the Equicord directory, run `node --test ../customProfileEnhanced/tests/appearance.test.cjs` when the repositories are siblings.
 
 ## Enhancements over the original plugin
 

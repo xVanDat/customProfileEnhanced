@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { findByPropsLazy } from "@webpack";
 import { GuildMemberStore, IconUtils, SnowflakeUtils, UserProfileStore, UserStore } from "@webpack/common";
 
 import {
@@ -42,6 +43,15 @@ let _origDecoURL: any = null;
 
 const proxyUserCache = new WeakMap<any, { data: CustomProfileData; proxy: any; version: number; }>();
 const profileCache = new WeakMap<any, { data: CustomProfileData; profile: any; version: number; }>();
+
+const PremiumSource: { SUBSCRIPTION: number; } = findByPropsLazy("SUBSCRIPTION", "FRACTIONAL_NITRO", "REVERSE_TRIAL");
+const PremiumSubscriptionType: { TIER_2: number; } = findByPropsLazy("NONE_UNSPECIFIED", "BOOST_ONLY", "TIER_2");
+
+export function isLocalStaff(user: { id: string; }) {
+    if (!_origGetCurrentUser) return false;
+    const custom = getCustomDataForUser(user.id);
+    return !!(custom?.enabled && ((custom.data.badgeFlags ?? 0) & 1));
+}
 
 function seededFraction(seed: string): number {
     let h = 2166136261 >>> 0;
@@ -177,12 +187,23 @@ export function fakeCurrentUser(user: any, customData?: CustomProfileData) {
             if (prop === "nameplate" && data.nameplate) {
                 return data.nameplate;
             }
-            if (prop === "publicFlags" || prop === "flags") {
+            if (prop === "publicFlags") {
                 return data.badgeFlags != null ? data.badgeFlags : target[prop];
+            }
+            if (prop === "flags" && data.badgeFlags != null) {
+                return (target.flags & ~1) | (data.badgeFlags & 1);
             }
             if (prop === "premiumType") {
                 return data.nitro ? 2 : target.premiumType;
             }
+            if (prop === "premiumState" && data.nitro) {
+                return {
+                    ...target.premiumState,
+                    premiumSource: PremiumSource.SUBSCRIPTION,
+                    premiumSubscriptionType: PremiumSubscriptionType.TIER_2
+                };
+            }
+            if (prop === "perks" && data.nitro) return null;
             if (prop === "premiumSince") {
                 if (data.nitro) {
                     const seedBase = target.id || "self";
@@ -216,22 +237,25 @@ export function fakeCurrentUser(user: any, customData?: CustomProfileData) {
 
             if (prop === "hasFlag") {
                 return (flag: number) => {
-                    const currentFlags = data.badgeFlags != null ? data.badgeFlags : (target.publicFlags || target.flags || 0);
-                    return (currentFlags & flag) === flag;
+                    if (data.badgeFlags != null && (flag & 1)) {
+                        return (data.badgeFlags & 1) !== 0 && (flag === 1 || target.hasFlag(flag & ~1));
+                    }
+                    return target.hasFlag(flag);
                 };
             }
-            if (prop === "hasStaffFlag" || prop === "isStaff" || prop === "isStaffPersonal" || prop === "isStaffUser" || prop === "isStaffMember") {
-                return () => {
-                    const currentFlags = data.badgeFlags != null ? data.badgeFlags : (target.publicFlags || target.flags || 0);
-                    return (currentFlags & 1) === 1;
-                };
+            if ((prop === "isStaff" || prop === "hasAnyStaffLevel") && data.badgeFlags != null) {
+                const flags = data.badgeFlags;
+                return () => (flags & 1) !== 0;
             }
-            if (prop === "hasPremium" || prop === "isPremium" || prop === "hasFreePremium") {
-                return () => !!data.nitro;
+            if ((prop === "hasPremium" || prop === "isPremium" || prop === "hasPaidTier2Subscription") && data.nitro) {
+                return () => true;
             }
 
             const value = Reflect.get(target, prop, target);
-            if (typeof value === "function") {
+            if (typeof value === "function" && typeof prop === "string") {
+                if (prop === "hasFreePremium" || prop === "hadPremiumSubscription" || prop === "isOnReverseTrial" || prop.startsWith("isPremiumWith") || prop.startsWith("isFractionalPremium")) {
+                    return value.bind(receiver);
+                }
                 return value.bind(target);
             }
             return value;
@@ -245,8 +269,8 @@ export function fakeCurrentUser(user: any, customData?: CustomProfileData) {
     return proxy;
 }
 
-export function getCustomProfileBadgesList(userId: string): any[] {
-    const custom = getCustomDataForUser(userId);
+export function getCustomProfileBadgesList(userId: string, previewData?: CustomProfileData): { id: string; iconSrc: string; description: string; link?: string; }[] {
+    const custom = previewData ? { data: previewData, enabled: true } : getCustomDataForUser(userId);
     if (!custom?.enabled) return [];
     const { data } = custom;
     const badges: any[] = [];
@@ -424,7 +448,7 @@ export function hookUserProfile(profile: any, customData?: CustomProfileData) {
         const overrideFlags = data.nitro || data.badgeFlags != null;
 
         if (overrideFlags) {
-            merged.premiumType = data.nitro ? 2 : 0;
+            merged.premiumType = data.nitro ? 2 : profile.premiumType;
 
             if (data.nitro) {
                 if (data.accentColor != null) {
@@ -443,8 +467,8 @@ export function hookUserProfile(profile: any, customData?: CustomProfileData) {
                     merged.premiumGuildSince = null;
                 }
             } else {
-                merged.premiumSince = null;
-                merged.premiumGuildSince = null;
+                merged.premiumSince = profile.premiumSince;
+                merged.premiumGuildSince = profile.premiumGuildSince;
             }
 
             merged.publicFlags = (data.badgeFlags != null) ? data.badgeFlags : profile.publicFlags;

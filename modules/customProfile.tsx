@@ -7,7 +7,7 @@
 import { HeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
 import { ModalCloseButton as ModalCloseButtonRaw, ModalContent as ModalContentRaw, ModalFooter as ModalFooterRaw, ModalHeader as ModalHeaderRaw, ModalRoot as ModalRootRaw, openModal } from "@utils/modal";
-import { AuthenticationStore, FluxDispatcher, IconUtils, React, Select, UserProfileStore, UserStore } from "@webpack/common";
+import { AuthenticationStore, IconUtils, React, Select, UserProfileStore, UserStore } from "@webpack/common";
 
 import {
     BADGES,
@@ -29,6 +29,7 @@ import {
 } from "../constants";
 import { CustomProfileData, FakeConnection } from "../types";
 import { extractSkuId, resolveAvatarDecoration, resolveNameplate, resolveProfileEffect, resolveProfileFrame } from "./profileFrame";
+import ProfilePreview from "./profilePreview";
 
 const ModalRoot = ModalRootRaw as any;
 const ModalHeader = ModalHeaderRaw as any;
@@ -42,7 +43,6 @@ export let allAccountsData: Record<string, CustomProfileData> = {};
 export let allAccountsEnabled: Record<string, boolean> = {};
 export let _dataVersion = 0;
 export let _cachedMyId: string | null = null;
-export let _trueOriginalUser: any = null;
 
 export function isMe(userId: string | null | undefined): boolean {
     if (!userId) return false;
@@ -86,70 +86,8 @@ export function saveAllDataSync() {
 }
 
 export function enforceCustomProfile() {
-    if (!isEnabled) return;
-    const realUser: any = UserStore.getCurrentUser();
-    if (!realUser) return;
-
-    if (!_trueOriginalUser) {
-        _trueOriginalUser = {
-            username: realUser.username,
-            globalName: realUser.globalName,
-            email: realUser.email,
-            phone: realUser.phone,
-            bio: realUser.bio,
-            pronouns: realUser.pronouns,
-            avatar: realUser.avatar,
-            banner: realUser.banner,
-            accentColor: realUser.accentColor,
-            publicFlags: realUser.publicFlags,
-            premiumType: realUser.premiumType
-        };
-    }
-
-    let changed = false;
-    if (storedData.username && realUser.username !== storedData.username) {
-        realUser.username = storedData.username;
-        (realUser as any).legacyUsername = storedData.username;
-        changed = true;
-    }
-    if (storedData.globalName && realUser.globalName !== storedData.globalName) {
-        realUser.globalName = storedData.globalName;
-        changed = true;
-    }
-    if (storedData.email && realUser.email !== storedData.email) {
-        realUser.email = storedData.email;
-        changed = true;
-    }
-    if (storedData.phone && realUser.phone !== storedData.phone) {
-        realUser.phone = storedData.phone;
-        changed = true;
-    }
-    if (storedData.bio && realUser.bio !== storedData.bio) {
-        realUser.bio = storedData.bio;
-        changed = true;
-    }
-    if (storedData.pronouns && realUser.pronouns !== storedData.pronouns) {
-        realUser.pronouns = storedData.pronouns;
-        changed = true;
-    }
-    if (storedData.badgeFlags != null && realUser.publicFlags !== storedData.badgeFlags) {
-        realUser.publicFlags = storedData.badgeFlags;
-        realUser.flags = storedData.badgeFlags;
-        changed = true;
-    }
-    if (storedData.nitro) {
-        if (realUser.premiumType !== 2) {
-            realUser.premiumType = 2;
-            realUser._realPremiumType = 2;
-            changed = true;
-        }
-    }
-
-    if (changed) {
-        FluxDispatcher.dispatch({ type: "CURRENT_USER_UPDATE", user: realUser });
-        FluxDispatcher.dispatch({ type: "USER_UPDATE", user: realUser });
-        forceAccountPanelRerender();
-    }
+    resetCustomProfileCache();
+    forceAccountPanelRerender();
 }
 
 export function getCustomDataForUser(userId: string | null | undefined): { data: CustomProfileData; enabled: boolean; } | null {
@@ -181,11 +119,8 @@ export function syncCurrentUserData(forcedId?: string) {
             delete allAccountsEnabled[""];
             saveAllDataSync();
         } else {
-            const keys = Object.keys(allAccountsData);
-            if (keys.length === 1 && allAccountsData[keys[0]]) {
-                storedData = allAccountsData[keys[0]];
-                isEnabled = allAccountsEnabled[keys[0]] !== false;
-            }
+            storedData = {};
+            isEnabled = false;
         }
     } else {
         const keys = Object.keys(allAccountsData);
@@ -195,7 +130,7 @@ export function syncCurrentUserData(forcedId?: string) {
         }
     }
 
-    if (!storedData || Object.keys(storedData).length === 0) {
+    if (!myId && (!storedData || Object.keys(storedData).length === 0)) {
         try {
             const raw = localStorage.getItem(LS_KEY_DATA);
             const en = localStorage.getItem(LS_KEY_ENABLED);
@@ -215,14 +150,6 @@ export function loadDataSync() {
             const rawEnabled = localStorage.getItem(LS_ALL_ENABLED);
             try { allAccountsEnabled = rawEnabled ? JSON.parse(rawEnabled) : {}; } catch { allAccountsEnabled = {}; }
             syncCurrentUserData();
-            if (!storedData || Object.keys(storedData).length === 0) {
-                const rawOld = localStorage.getItem(LS_KEY_DATA);
-                const enOld = localStorage.getItem(LS_KEY_ENABLED);
-                if (rawOld) {
-                    try { storedData = JSON.parse(rawOld); } catch { storedData = {}; }
-                    isEnabled = enOld === "1";
-                }
-            }
             return;
         }
 
@@ -281,7 +208,6 @@ export function forceAccountPanelRerender() {
 }
 
 export function resetCustomProfileCache() {
-    _trueOriginalUser = null;
     _dataVersion++;
 }
 
@@ -884,23 +810,6 @@ export function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             DataStore.set(DS_KEY_DATA, {}).catch(() => { });
             DataStore.set(DS_KEY_ENABLED, false).catch(() => { });
 
-            try {
-                const WP = (Vencord as any).Webpack;
-                const OPTS = WP?.findByStoreName?.("OverridePremiumTypeStore") || WP?.findByProps?.("premiumTypeOverride");
-                const state = OPTS?.getState?.();
-                if (state && state.premiumTypeOverride === 2) {
-                    state.premiumTypeOverride = undefined;
-                }
-            } catch { }
-
-            if (_trueOriginalUser) {
-                const realUser: any = UserStore.getCurrentUser();
-                if (realUser) {
-                    Object.assign(realUser, _trueOriginalUser);
-                    FluxDispatcher.dispatch({ type: "CURRENT_USER_UPDATE", user: realUser });
-                    FluxDispatcher.dispatch({ type: "USER_UPDATE", user: realUser });
-                }
-            }
         }
 
         saveAllDataSync();
@@ -966,6 +875,7 @@ export function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </ModalHeader>
             <ModalContent style={{ padding: 0, overflow: "hidden" }}>
                 <div className="cp-layout">
+                    <ProfilePreview accountId={selectedAccountId || currentUid} data={data} />
                     <div className="cp-tabs">
                         <div className={`cp-tab ${activeTab === "general" ? "cp-tab--active" : ""}`} onClick={() => setActiveTab("general")}>
                             <span>👤</span>

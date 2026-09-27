@@ -36,6 +36,7 @@ import {
     getCustomProfileBadgesList,
     getDecorationURLForUser,
     installStoreHooks,
+    isLocalStaff,
     patchBannerUrl,
     uninstallStoreHooks
 } from "./patches";
@@ -105,6 +106,13 @@ export default definePlugin({
     },
 
     patches: [
+        {
+            find: "hasAnyStaffLevel=()=>!1",
+            replacement: {
+                match: /(isStaff|hasAnyStaffLevel)=\(\)=>!1/g,
+                replace: "$1=()=>$self.isLocalStaff(this)"
+            }
+        },
         {
             find: '"SHOULD_LOAD");',
             replacement: {
@@ -215,6 +223,8 @@ export default definePlugin({
         }
     ],
 
+    isLocalStaff,
+
     fakeCurrentUser(user: any) {
         return fakeCurrentUser(user);
     },
@@ -302,5 +312,6 @@ export default definePlugin({
         cleanupFakeAccount();
         stopCustomStatuses();
         uninstallStoreHooks();
+        forceAccountPanelRerender();
     }
 });
