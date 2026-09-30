@@ -23,6 +23,7 @@ let originalHasFlag: StaffUserPrototype["hasFlag"];
 let originalGetUserIsStaff: typeof UsernameUtils.getUserIsStaff | undefined;
 let modifiedUser: User | undefined;
 let originalFlags: number | undefined;
+let originalHadOwnFlags = false;
 let patchedPrototype: StaffUserPrototype | undefined;
 let installed = false;
 
@@ -38,23 +39,33 @@ function notifyUserUpdate(user: User) {
     });
 }
 
+function restoreFlags(user: User) {
+    if (originalHadOwnFlags) {
+        Reflect.set(user, "flags", originalFlags);
+    } else {
+        Reflect.deleteProperty(user, "flags");
+    }
+}
+
 export function syncStaffSpoof() {
     if (!installed || !isLocalStaff || !getCurrentUser) return;
 
     const user = getCurrentUser();
     if (modifiedUser && (!user || modifiedUser.id !== user.id)) {
-        if (originalFlags !== undefined) modifiedUser.flags = originalFlags;
+        restoreFlags(modifiedUser);
         modifiedUser = undefined;
         originalFlags = undefined;
+        originalHadOwnFlags = false;
     }
 
     if (modifiedUser && user) {
         modifiedUser = user;
         if (!isLocalStaff(user)) {
-            if (originalFlags !== undefined) user.flags = originalFlags;
+            restoreFlags(user);
             notifyUserUpdate(user);
             modifiedUser = undefined;
             originalFlags = undefined;
+            originalHadOwnFlags = false;
         } else {
             user.flags = (user.flags ?? 0) | 1;
         }
@@ -63,6 +74,7 @@ export function syncStaffSpoof() {
 
     if (user && isLocalStaff(user)) {
         modifiedUser = user;
+        originalHadOwnFlags = Object.prototype.hasOwnProperty.call(user, "flags");
         originalFlags = user.flags;
         user.flags = (user.flags ?? 0) | 1;
         notifyUserUpdate(user);
@@ -124,7 +136,7 @@ export function uninstallStaffSpoof() {
     if (modifiedUser) {
         const currentUser = getCurrentUser?.();
         const user = currentUser?.id === modifiedUser.id ? currentUser : modifiedUser;
-        if (originalFlags !== undefined) user.flags = originalFlags;
+        restoreFlags(user);
         if (user === currentUser) notifyUserUpdate(user);
     }
 
@@ -146,6 +158,7 @@ export function uninstallStaffSpoof() {
     originalGetUserIsStaff = undefined;
     modifiedUser = undefined;
     originalFlags = undefined;
+    originalHadOwnFlags = false;
     patchedPrototype = undefined;
     installed = false;
 }

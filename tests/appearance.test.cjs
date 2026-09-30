@@ -199,6 +199,23 @@ test("Staff badge updates every client-side staff check and restores them dynami
     assert.equal(real.flags, 128);
 });
 
+test("removing the Staff badge restores an originally missing flags property", async () => {
+    const { api, real } = await setupStaffSpoof();
+    delete real.flags;
+    let enabled = true;
+
+    api.installStaffSpoof(user => enabled && user.id === "self", () => real);
+    assert.equal(real.flags, 1);
+
+    enabled = false;
+    api.syncStaffSpoof();
+    assert.equal(Object.prototype.hasOwnProperty.call(real, "flags"), false);
+    assert.equal(real.isStaff(), false);
+    assert.equal(real.hasFlag(1), false);
+
+    api.uninstallStaffSpoof();
+});
+
 test("preview badges use unsaved draft data independently of the saved account", async () => {
     const { api, state } = await setup({ nitro: false });
     state.isEnabled = false;
