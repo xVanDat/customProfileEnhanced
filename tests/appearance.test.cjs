@@ -68,7 +68,8 @@ async function setup(data = {}) {
         UserStore: {
             getCurrentUser: () => real,
             getUser: id => id === "self" ? real : other,
-            getUsers: () => ({ self: real, other })
+            getUsers: () => ({ self: real, other }),
+            emitChange() {}
         },
         UserProfileStore: { getUserProfile: () => ({ userId: "self", premiumType: null }), getGuildMemberProfile: () => null },
         GuildMemberStore: {}, IconUtils: {}, SnowflakeUtils: {}, RestAPI: {},
@@ -91,7 +92,7 @@ async function setupStaffSpoof() {
     const real = new User("self");
     const other = new User("other");
     const common = {
-        UserStore: { getUsers: () => ({ self: real, other }) },
+        UserStore: { getUsers: () => ({ self: real, other }), emitChange() {} },
         FluxDispatcher: { dispatch() {} },
         UsernameUtils: { getUserIsStaff: () => false }
     };
@@ -213,6 +214,13 @@ test("removing the Staff badge restores an originally missing flags property", a
     assert.equal(real.isStaff(), false);
     assert.equal(real.hasFlag(1), false);
 
+    enabled = true;
+    api.syncStaffSpoof();
+    assert.equal(real.flags, 1);
+    assert.equal(real.isStaff(), true);
+
+    enabled = false;
+    api.syncStaffSpoof();
     api.uninstallStaffSpoof();
 });
 

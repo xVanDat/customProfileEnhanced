@@ -5,7 +5,7 @@
  */
 
 import { User } from "@vencord/discord-types";
-import { FluxDispatcher, UsernameUtils, UserStore } from "@webpack/common";
+import { UsernameUtils, UserStore } from "@webpack/common";
 
 interface StaffUserPrototype {
     isStaff?: (this: User) => boolean;
@@ -32,19 +32,13 @@ function getUserPrototype(): StaffUserPrototype | undefined {
     return user && Object.getPrototypeOf(user);
 }
 
-function notifyUserUpdate(user: User) {
-    FluxDispatcher.dispatch({
-        type: "CURRENT_USER_UPDATE",
-        user: { ...user }
-    });
+function notifyUserUpdate() {
+    UserStore.emitChange();
 }
 
 function restoreFlags(user: User) {
-    if (originalHadOwnFlags) {
-        Reflect.set(user, "flags", originalFlags);
-    } else {
-        Reflect.deleteProperty(user, "flags");
-    }
+    Reflect.set(user, "flags", originalFlags ?? 0);
+    if (!originalHadOwnFlags) Reflect.deleteProperty(user, "flags");
 }
 
 export function syncStaffSpoof() {
@@ -62,7 +56,7 @@ export function syncStaffSpoof() {
         modifiedUser = user;
         if (!isLocalStaff(user)) {
             restoreFlags(user);
-            notifyUserUpdate(user);
+            notifyUserUpdate();
             modifiedUser = undefined;
             originalFlags = undefined;
             originalHadOwnFlags = false;
@@ -77,7 +71,7 @@ export function syncStaffSpoof() {
         originalHadOwnFlags = Object.prototype.hasOwnProperty.call(user, "flags");
         originalFlags = user.flags;
         user.flags = (user.flags ?? 0) | 1;
-        notifyUserUpdate(user);
+        notifyUserUpdate();
     }
 }
 
@@ -137,7 +131,7 @@ export function uninstallStaffSpoof() {
         const currentUser = getCurrentUser?.();
         const user = currentUser?.id === modifiedUser.id ? currentUser : modifiedUser;
         restoreFlags(user);
-        if (user === currentUser) notifyUserUpdate(user);
+        if (user === currentUser) notifyUserUpdate();
     }
 
     const proto = patchedPrototype;
