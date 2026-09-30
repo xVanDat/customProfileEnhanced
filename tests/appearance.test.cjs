@@ -26,6 +26,15 @@ const bundle = build({
     }]
 });
 
+const staffBundle = build({
+    entryPoints: [path.join(__dirname, "../modules/staffSpoof.ts")],
+    bundle: true,
+    write: false,
+    platform: "node",
+    format: "cjs",
+    external: ["@webpack/common", "@vencord/discord-types"]
+});
+
 class User {
     constructor(id, premiumType = null) {
         this.id = id;
@@ -56,9 +65,15 @@ async function setup(data = {}) {
         getCustomDataForUser: id => id === "self" && state.isEnabled ? { data: state.storedData, enabled: true } : null
     };
     const common = {
-        UserStore: { getCurrentUser: () => real, getUser: id => id === "self" ? real : other },
+        UserStore: {
+            getCurrentUser: () => real,
+            getUser: id => id === "self" ? real : other,
+            getUsers: () => ({ self: real, other })
+        },
         UserProfileStore: { getUserProfile: () => ({ userId: "self", premiumType: null }), getGuildMemberProfile: () => null },
-        GuildMemberStore: {}, IconUtils: {}, SnowflakeUtils: {}, RestAPI: {}
+        GuildMemberStore: {}, IconUtils: {}, SnowflakeUtils: {}, RestAPI: {},
+        FluxDispatcher: { dispatch() {} },
+        UsernameUtils: { getUserIsStaff: () => false }
     };
     const module = { exports: {} };
     const mocks = {
@@ -70,6 +85,23 @@ async function setup(data = {}) {
         module, exports: module.exports, require: id => mocks[id], Vencord: { Webpack: {} }, Date
     });
     return { api: module.exports, state, common, real, other };
+}
+
+async function setupStaffSpoof() {
+    const real = new User("self");
+    const other = new User("other");
+    const common = {
+        UserStore: { getUsers: () => ({ self: real, other }) },
+        FluxDispatcher: { dispatch() {} },
+        UsernameUtils: { getUserIsStaff: () => false }
+    };
+    const module = { exports: {} };
+    vm.runInNewContext((await staffBundle).outputFiles[0].text, {
+        module,
+        exports: module.exports,
+        require: id => ({ "@webpack/common": common }[id])
+    });
+    return { api: module.exports, common, real, other };
 }
 
 test("Nitro tenure sees a paid tier 2 appearance without changing the server user", async () => {
@@ -96,7 +128,7 @@ test("fractional and trial methods use the same overridden premium state", async
     assert.equal(real.isOnReverseTrial(), true);
 });
 
-test("Staff follows the badge, preserves internal flags, and does not imply a personal staff account", async () => {
+test("profile proxy follows the Staff badge while preserving unrelated flags", async () => {
     const { api, real } = await setup();
     const user = api.fakeCurrentUser(real, { badgeFlags: 1 });
     assert.equal(user.isStaff(), true);
@@ -136,6 +168,35 @@ test("store hooks isolate accounts and restore original methods on stop", async 
     api.uninstallStoreHooks();
     assert.equal(common.UserStore.getCurrentUser(), real);
     assert.equal(api.isLocalStaff(real), false);
+});
+
+test("Staff badge updates every client-side staff check and restores them dynamically", async () => {
+    const { api, common, real, other } = await setupStaffSpoof();
+    let enabled = true;
+
+    api.installStaffSpoof(user => enabled && user.id === "self", () => real);
+    assert.equal(real.isStaff(), true);
+    assert.equal(real.isStaffPersonal(), true);
+    assert.equal(real.hasAnyStaffLevel(), true);
+    assert.equal(real.hasFlag(1), true);
+    assert.equal(real.flags, 129);
+    assert.equal(common.UsernameUtils.getUserIsStaff(real), true);
+    assert.equal(other.isStaff(), false);
+
+    enabled = false;
+    api.syncStaffSpoof();
+    assert.equal(real.isStaff(), false);
+    assert.equal(real.isStaffPersonal(), false);
+    assert.equal(real.hasAnyStaffLevel(), false);
+    assert.equal(real.hasFlag(1), false);
+    assert.equal(real.flags, 128);
+    assert.equal(common.UsernameUtils.getUserIsStaff(real), false);
+
+    enabled = true;
+    api.syncStaffSpoof();
+    api.uninstallStaffSpoof();
+    assert.equal(real.isStaff(), false);
+    assert.equal(real.flags, 128);
 });
 
 test("preview badges use unsaved draft data independently of the saved account", async () => {

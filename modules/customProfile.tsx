@@ -30,6 +30,7 @@ import {
 import { CustomProfileData, FakeConnection } from "../types";
 import { extractSkuId, resolveAvatarDecoration, resolveNameplate, resolveProfileEffect, resolveProfileFrame } from "./profileFrame";
 import ProfilePreview from "./profilePreview";
+import { syncStaffSpoof } from "./staffSpoof";
 
 const ModalRoot = ModalRootRaw as any;
 const ModalHeader = ModalHeaderRaw as any;
@@ -209,6 +210,7 @@ export function forceAccountPanelRerender() {
 
 export function resetCustomProfileCache() {
     _dataVersion++;
+    syncStaffSpoof();
 }
 
 // ── UI Components ─────────────────────────────────────────────────────────────

@@ -1,0 +1,151 @@
+/*
+ * Vencord, a Discord client mod
+ * Copyright (c) 2026 Vendicated and contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { User } from "@vencord/discord-types";
+import { FluxDispatcher, UsernameUtils, UserStore } from "@webpack/common";
+
+interface StaffUserPrototype {
+    isStaff?: (this: User) => boolean;
+    isStaffPersonal?: (this: User) => boolean;
+    hasAnyStaffLevel?: (this: User) => boolean;
+    hasFlag?: (this: User, flag: number) => boolean;
+}
+
+let isLocalStaff: ((user: User) => boolean) | undefined;
+let getCurrentUser: (() => User | undefined) | undefined;
+let originalIsStaff: StaffUserPrototype["isStaff"];
+let originalIsStaffPersonal: StaffUserPrototype["isStaffPersonal"];
+let originalHasAnyStaffLevel: StaffUserPrototype["hasAnyStaffLevel"];
+let originalHasFlag: StaffUserPrototype["hasFlag"];
+let originalGetUserIsStaff: typeof UsernameUtils.getUserIsStaff | undefined;
+let modifiedUser: User | undefined;
+let originalFlags: number | undefined;
+let patchedPrototype: StaffUserPrototype | undefined;
+let installed = false;
+
+function getUserPrototype(): StaffUserPrototype | undefined {
+    const user = getCurrentUser?.() ?? Object.values(UserStore.getUsers())[0];
+    return user && Object.getPrototypeOf(user);
+}
+
+function notifyUserUpdate(user: User) {
+    FluxDispatcher.dispatch({
+        type: "CURRENT_USER_UPDATE",
+        user: { ...user }
+    });
+}
+
+export function syncStaffSpoof() {
+    if (!installed || !isLocalStaff || !getCurrentUser) return;
+
+    const user = getCurrentUser();
+    if (modifiedUser && (!user || modifiedUser.id !== user.id)) {
+        if (originalFlags !== undefined) modifiedUser.flags = originalFlags;
+        modifiedUser = undefined;
+        originalFlags = undefined;
+    }
+
+    if (modifiedUser && user) {
+        modifiedUser = user;
+        if (!isLocalStaff(user)) {
+            if (originalFlags !== undefined) user.flags = originalFlags;
+            notifyUserUpdate(user);
+            modifiedUser = undefined;
+            originalFlags = undefined;
+        } else {
+            user.flags = (user.flags ?? 0) | 1;
+        }
+        return;
+    }
+
+    if (user && isLocalStaff(user)) {
+        modifiedUser = user;
+        originalFlags = user.flags;
+        user.flags = (user.flags ?? 0) | 1;
+        notifyUserUpdate(user);
+    }
+}
+
+export function installStaffSpoof(staffCheck: (user: User) => boolean, currentUser: () => User | undefined) {
+    if (installed) return;
+    installed = true;
+    isLocalStaff = staffCheck;
+    getCurrentUser = currentUser;
+
+    const proto = getUserPrototype();
+    patchedPrototype = proto;
+    if (proto?.isStaff) {
+        const original = proto.isStaff;
+        originalIsStaff = original;
+        proto.isStaff = function () {
+            return isLocalStaff?.(this) || Reflect.apply(original, this, arguments);
+        };
+    }
+    if (proto?.isStaffPersonal) {
+        const original = proto.isStaffPersonal;
+        originalIsStaffPersonal = original;
+        proto.isStaffPersonal = function () {
+            return isLocalStaff?.(this) || Reflect.apply(original, this, arguments);
+        };
+    }
+    if (proto?.hasAnyStaffLevel) {
+        const original = proto.hasAnyStaffLevel;
+        originalHasAnyStaffLevel = original;
+        proto.hasAnyStaffLevel = function () {
+            return isLocalStaff?.(this) || Reflect.apply(original, this, arguments);
+        };
+    }
+    if (proto?.hasFlag) {
+        const original = proto.hasFlag;
+        originalHasFlag = original;
+        proto.hasFlag = function (flag: number) {
+            if (isLocalStaff?.(this) && (flag & 1)) {
+                return flag === 1 || Reflect.apply(original, this, [flag & ~1]);
+            }
+            return Reflect.apply(original, this, arguments);
+        };
+    }
+
+    if (UsernameUtils.getUserIsStaff) {
+        const original = UsernameUtils.getUserIsStaff;
+        originalGetUserIsStaff = original;
+        UsernameUtils.getUserIsStaff = user => isLocalStaff?.(user) || original(user);
+    }
+
+    syncStaffSpoof();
+}
+
+export function uninstallStaffSpoof() {
+    if (!installed) return;
+
+    if (modifiedUser) {
+        const currentUser = getCurrentUser?.();
+        const user = currentUser?.id === modifiedUser.id ? currentUser : modifiedUser;
+        if (originalFlags !== undefined) user.flags = originalFlags;
+        if (user === currentUser) notifyUserUpdate(user);
+    }
+
+    const proto = patchedPrototype;
+    if (proto) {
+        if (originalIsStaff) proto.isStaff = originalIsStaff;
+        if (originalIsStaffPersonal) proto.isStaffPersonal = originalIsStaffPersonal;
+        if (originalHasAnyStaffLevel) proto.hasAnyStaffLevel = originalHasAnyStaffLevel;
+        if (originalHasFlag) proto.hasFlag = originalHasFlag;
+    }
+    if (originalGetUserIsStaff) UsernameUtils.getUserIsStaff = originalGetUserIsStaff;
+
+    isLocalStaff = undefined;
+    getCurrentUser = undefined;
+    originalIsStaff = undefined;
+    originalIsStaffPersonal = undefined;
+    originalHasAnyStaffLevel = undefined;
+    originalHasFlag = undefined;
+    originalGetUserIsStaff = undefined;
+    modifiedUser = undefined;
+    originalFlags = undefined;
+    patchedPrototype = undefined;
+    installed = false;
+}

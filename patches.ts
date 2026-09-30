@@ -29,6 +29,7 @@ import {
     storedData
 } from "./modules/customProfile";
 import { withCollectibles } from "./modules/profileFrame";
+import { installStaffSpoof, uninstallStaffSpoof } from "./modules/staffSpoof";
 import { CustomProfileData } from "./types";
 
 let _origGetUserAvatarURL: any = null;
@@ -819,9 +820,13 @@ export function installStoreHooks() {
             };
         }
     } catch { }
+
+    installStaffSpoof(isLocalStaff, () => _origGetCurrentUser?.());
 }
 
 export function uninstallStoreHooks() {
+    uninstallStaffSpoof();
+
     try {
         const US = (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser") || UserStore;
         if (US && _origGetCurrentUser) {
